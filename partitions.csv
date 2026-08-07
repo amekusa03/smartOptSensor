@@ -1,0 +1,6 @@
+# Name,   Type, SubType, Offset,  Size, Flags
+# Partition table for smartOptSensor (ESP32-C3 4MB Flash)
+nvs,      data, nvs,     0x10000,   0x10000,
+otadata,  data, ota,     0x20000,   0x2000,
+phy_init, data, phy,     0x22000,   0x1000,
+factory,  app,  factory, 0x30000,   0x3B0000,
