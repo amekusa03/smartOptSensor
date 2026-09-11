@@ -76,7 +76,7 @@ esp_err_t cds_sensor_read(cds_sensor_data_t *data)
         return ESP_ERR_INVALID_STATE;
     }
 
-    // 多重サンプリングでノイズ軽減 (10回分散平均: 各サンプル間1msディレイで電源フリッカー軽減)
+    // Multi-sample averaging for noise reduction (10 samples with 1ms delay to mitigate power flicker)
     int samples = 10;
     int sum_raw = 0;
     for (int i = 0; i < samples; i++) {
@@ -104,16 +104,16 @@ esp_err_t cds_sensor_read(cds_sensor_data_t *data)
         v_mv = CDS_VCC_MV - 1.0f;
     }
 
-    // 分圧回路計算: Vout = Vcc * R_pulldown / (R_cds + R_pulldown)
+    // Voltage divider calculation: Vout = Vcc * R_pulldown / (R_cds + R_pulldown)
     // => R_cds = R_pulldown * ((Vcc / Vout) - 1.0)
     float r_cds = CDS_PULLDOWN_RESISTOR * ((CDS_VCC_MV / v_mv) - 1.0f);
     if (r_cds < 1.0f) {
         r_cds = 1.0f;
     }
 
-    // 実測値に基づく校正:
-    // - 蛍光灯下 (RAW ≈ 2600, Vout ≈ 1910mV, R_cds ≈ 7250Ω): 約 300 Lux
-    // - 暗所 (RAW ≈ 660, Vout ≈ 480mV, R_cds ≈ 58700Ω): 約 1.0 Lux
+    // Calibration based on empirical measurements:
+    // - Under room lamp (RAW ≈ 2600, Vout ≈ 1910mV, R_cds ≈ 7250 Ohm): ~300 Lux
+    // - Dark room (RAW ≈ 660, Vout ≈ 480mV, R_cds ≈ 58700 Ohm): ~1.0 Lux
     float lux = 300.0f * powf(7250.0f / r_cds, 2.727f);
     if (lux < 0.1f) {
         lux = 0.1f;
@@ -122,7 +122,7 @@ esp_err_t cds_sensor_read(cds_sensor_data_t *data)
         lux = 100000.0f;
     }
 
-    // 小数点2桁以下を切り捨て・四捨五入（小数点第1位までに丸める）
+    // Round to 1 decimal place
     lux = roundf(lux * 10.0f) / 10.0f;
 
     data->raw_adc = raw;

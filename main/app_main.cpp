@@ -29,10 +29,10 @@ static volatile bool s_system_ready = false;
 
 #define GPIO_FACTORY_RESET          GPIO_NUM_9
 #define FACTORY_RESET_HOLD_MS       3000
-#define MATTER_REPORT_DEADBAND      50     // Matter Value 変化閾値 (デッドバンド)
-#define MATTER_REPORT_HEARTBEAT_MS  60000  // 最大更新間隔 (ハートビート 60秒)
+#define MATTER_REPORT_DEADBAND      50     // Matter Value change threshold (deadband)
+#define MATTER_REPORT_HEARTBEAT_MS  60000  // Maximum reporting interval (60s heartbeat)
 
-// 1000ms 周期で CdS センサを計測し、シリアル出力＆最適化されたMatter属性更新を行うタスク
+// Periodic task to sample CdS sensor every 1000ms, output to serial, and report optimized Matter attribute updates
 static void cds_sensor_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "CdS Sensor sampling task started (1000ms cycle)");
@@ -44,7 +44,7 @@ static void cds_sensor_task(void *pvParameters)
 
     while (true) {
         if (cds_sensor_read(&data) == ESP_OK) {
-            // 回路確認用の 1000ms 周期シリアルログ出力
+            // 1000ms periodic serial log for circuit diagnostics
             ESP_LOGI(TAG, "[CdS Sensor] RAW: %4d | Volt: %4d mV | Res: %7.1f Ohm | Lux: %7.1f | MatterVal: %u",
                      data.raw_adc,
                      data.voltage_mv,
@@ -52,7 +52,7 @@ static void cds_sensor_task(void *pvParameters)
                      data.lux,
                      data.matter_value);
 
-            // Matter が開始されていれば条件付きで IlluminanceMeasurement 属性を更新
+            // If Matter is ready, conditionally update IlluminanceMeasurement attribute
             if (s_system_ready) {
                 int64_t now_ms = esp_timer_get_time() / 1000;
                 int diff = abs((int)data.matter_value - (int)last_reported_val);
@@ -227,15 +227,15 @@ extern "C" void app_main()
     ensure_unique_id();
     store_wifi_credentials();
 
-    // CdS センサ (ADC1_CH1 / GPIO1) の初期化
+    // Initialize CdS sensor (ADC1_CH1 / GPIO1)
     if (cds_sensor_init() != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize CdS sensor");
     }
 
-    // CdS センサ周期計測タスクの作成 (優先度5, スタック 4096 バイト, 500ms 周期)
+    // Create periodic task for CdS sensor sampling
     xTaskCreate(cds_sensor_task, "cds_sensor_task", 4096, NULL, 5, NULL);
 
-    // Matter ノードと Light Sensor エンドポイントの作成
+    // Create Matter node and Light Sensor endpoint
     node::config_t node_config;
     node_t *node = node::create(&node_config, app_attribute_update_cb, app_identification_cb);
     if (!node) {
@@ -268,6 +268,6 @@ extern "C" void app_main()
 
     PrintOnboardingCodes(chip::RendezvousInformationFlags(chip::RendezvousInformationFlag::kOnNetwork));
 
-    // ファクトリーリセット用タスクの作成
+    // Create factory reset monitoring task
     xTaskCreate(factory_reset_task, "factory_reset", 4096, nullptr, 1, nullptr);
 }
